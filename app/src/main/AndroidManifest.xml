@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -29,6 +30,12 @@
         </activity>
 
         <service android:name=".RunnerService" android:foregroundServiceType="specialUse" android:exported="false" />
+        <receiver android:name=".BootReceiver" android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />Boo
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
