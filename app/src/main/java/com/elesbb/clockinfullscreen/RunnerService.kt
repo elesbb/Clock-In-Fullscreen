@@ -42,6 +42,7 @@ class RunnerService : Service() {
     private lateinit var batteryReceiver: BroadcastReceiver
 
     private var shouldShow = true
+    private var canShow = true
 
     private fun GetNotification(buttonContent: String, _action: String): Notification.Builder {
         val toggleVisibilityIntent = Intent(this@RunnerService, RunnerService::class.java).apply {
@@ -63,17 +64,20 @@ class RunnerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         if (intent!!.action.equals(HIDE_ACTION)) {
             Log.d("ELESBB", "Hide")
-            windowManager.removeView(floatingLayout)
+            if (canShow)
+                windowManager.removeView(floatingLayout)
             notificationManager.notify(notiId, GetNotification("SHOW", SHOW_ACTION).build())
             shouldShow = false
 
             return START_STICKY
         } else if (intent.action.equals(SHOW_ACTION)) {
             Log.d("ELESBB", "Show")
-            windowManager.addView(floatingLayout, clockParams)
+            if (canShow)
+                windowManager.addView(floatingLayout, clockParams)
             notificationManager.notify(notiId, GetNotification("HIDE", HIDE_ACTION).build())
             shouldShow = true
 
@@ -91,7 +95,6 @@ class RunnerService : Service() {
         floatingLayout = LayoutInflater.from(this@RunnerService).inflate(R.layout.clock_layout, null, false) as LinearLayout
         clockText = floatingLayout.findViewById(R.id.floating_clock)
         val detectorLayout = LinearLayout(this@RunnerService)
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
 
         batteryText = floatingLayout.findViewById(R.id.battery_level)
@@ -133,6 +136,7 @@ class RunnerService : Service() {
 
                     if (!isVisible) {
                         try {
+                            canShow = true
                             if (!shouldShow) return p1
                             Log.d("ELESBB_WINDOW", "Should be showing clock")
                             windowManager.addView(floatingLayout, clockParams)
@@ -142,6 +146,7 @@ class RunnerService : Service() {
                     } else {
                         try {
                             Log.d("ELESBB_WINDOW", "Should be hiding clock")
+                            canShow = false
                             windowManager.removeView(floatingLayout)
                             unregisterReceiver(batteryReceiver)
                         } catch (_: Exception) {}
