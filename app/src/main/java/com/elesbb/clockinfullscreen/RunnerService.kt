@@ -3,6 +3,7 @@ package com.elesbb.clockinfullscreen
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -16,7 +17,6 @@ import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
-import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.LinearLayout
@@ -27,6 +27,13 @@ class RunnerService : Service() {
 
     private val localBinder = LocalBinder()
 
+    private val HIDE_ACTION = "HIDE_ACTION"
+    private val SHOW_ACTION = "SHOW_ACTION"
+
+    private val notiId = 1
+
+    val clockParams = WindowManager.LayoutParams()
+
     private lateinit var batteryText: TextView
     private lateinit var clockText: TextClock
     private lateinit var floatingLayout: LinearLayout
@@ -34,19 +41,51 @@ class RunnerService : Service() {
     private val intentFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
     private lateinit var batteryReceiver: BroadcastReceiver
 
+    private var shouldShow = true
+
+    private fun GetNotification(buttonContent: String, _action: String): Notification.Builder {
+        val toggleVisibilityIntent = Intent(this@RunnerService, RunnerService::class.java).apply {
+            action = _action
+        }
+
+        val togglePi = PendingIntent.getService(this@RunnerService, 1, toggleVisibilityIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+        val noti = Notification.Builder(this@RunnerService, "detector_service")
+        noti.setSmallIcon(R.mipmap.ic_launcher)
+        val notiAction = Notification.Action.Builder(0, buttonContent, togglePi)
+        noti.addAction(notiAction.build())
+
+        noti.setContentTitle("Detector Service")
+        noti.setContentText("Detector service running. Used to detect full screen state")
+        return noti
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val myPrefs = getSharedPreferences("ops", MODE_PRIVATE)
+
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        if (intent!!.action.equals(HIDE_ACTION)) {
+            Log.d("ELESBB", "Hide")
+            windowManager.removeView(floatingLayout)
+            notificationManager.notify(notiId, GetNotification("SHOW", SHOW_ACTION).build())
+            shouldShow = false
+
+            return START_STICKY
+        } else if (intent.action.equals(SHOW_ACTION)) {
+            Log.d("ELESBB", "Show")
+            windowManager.addView(floatingLayout, clockParams)
+            notificationManager.notify(notiId, GetNotification("HIDE", HIDE_ACTION).build())
+            shouldShow = true
+
+            return START_STICKY
+        }
+
+        val myPrefs = getSharedPreferences("ops", MODE_PRIVATE)
         val notiChannel = NotificationChannel("detector_service", "Detector", NotificationManager.IMPORTANCE_MIN)
 
         notificationManager.createNotificationChannel(notiChannel)
 
-        val noti = Notification.Builder(this@RunnerService, "detector_service")
-        noti.setSmallIcon(R.mipmap.ic_launcher)
-        noti.setContentTitle("Detector Service")
-        noti.setContentText("Detector service running. Used to detect full screen state")
 
-        startForeground(1, noti.build())
+        startForeground(notiId, GetNotification("HIDE", HIDE_ACTION).build())
 
         floatingLayout = LayoutInflater.from(this@RunnerService).inflate(R.layout.clock_layout, null, false) as LinearLayout
         clockText = floatingLayout.findViewById(R.id.floating_clock)
@@ -71,7 +110,6 @@ class RunnerService : Service() {
         detectorParams.x = 0
         detectorParams.y = 0
 
-        val clockParams = WindowManager.LayoutParams()
         clockParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
         clockParams.format = PixelFormat.RGBA_8888
         clockParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -90,18 +128,19 @@ class RunnerService : Service() {
 
                 override fun onApplyWindowInsets(p0: View, p1: WindowInsets): WindowInsets {
                     val isVisible = p1.isVisible(WindowInsets.Type.statusBars())
-                    Log.e("ELESBB_WINDOW", "Is Visible: $isVisible")
+                    Log.d("ELESBB_WINDOW", "Is Visible: $isVisible")
 
                     if (!isVisible) {
                         try {
-                            Log.e("ELESBB_WINDOW", "Should be showing clock")
+                            if (!shouldShow) return p1
+                            Log.d("ELESBB_WINDOW", "Should be showing clock")
                             windowManager.addView(floatingLayout, clockParams)
                             registerReceiver(batteryReceiver, intentFilter)
                         } catch (_: Exception) {}
 
                     } else {
                         try {
-                            Log.e("ELESBB_WINDOW", "Should be hiding clock")
+                            Log.d("ELESBB_WINDOW", "Should be hiding clock")
                             windowManager.removeView(floatingLayout)
                             unregisterReceiver(batteryReceiver)
                         } catch (_: Exception) {}
