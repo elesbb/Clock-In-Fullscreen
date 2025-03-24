@@ -54,6 +54,7 @@ class RunnerService : Service() {
         val notiAction = Notification.Action.Builder(0, buttonContent, togglePi)
         noti.addAction(notiAction.build())
 
+
         noti.setContentTitle("Detector Service")
         noti.setContentText("Detector service running. Used to detect full screen state")
         return noti
