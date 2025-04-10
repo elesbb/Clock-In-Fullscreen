@@ -66,22 +66,24 @@ class RunnerService : Service() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        if (intent!!.action.equals(HIDE_ACTION)) {
-            Log.d("ELESBB", "Hide")
-            if (canShow)
-                windowManager.removeView(floatingLayout)
-            notificationManager.notify(notiId, GetNotification("SHOW", SHOW_ACTION).build())
-            shouldShow = false
+        if (intent != null && intent.action != null) {
+            if (intent.action.equals(HIDE_ACTION)) {
+                Log.d("ELESBB", "Hide")
+                if (canShow)
+                    windowManager.removeView(floatingLayout)
+                notificationManager.notify(notiId, GetNotification("SHOW", SHOW_ACTION).build())
+                shouldShow = false
 
-            return START_STICKY
-        } else if (intent.action.equals(SHOW_ACTION)) {
-            Log.d("ELESBB", "Show")
-            if (canShow)
-                windowManager.addView(floatingLayout, clockParams)
-            notificationManager.notify(notiId, GetNotification("HIDE", HIDE_ACTION).build())
-            shouldShow = true
+                return START_STICKY
+            } else if (intent.action.equals(SHOW_ACTION)) {
+                Log.d("ELESBB", "Show")
+                if (canShow)
+                    windowManager.addView(floatingLayout, clockParams)
+                notificationManager.notify(notiId, GetNotification("HIDE", HIDE_ACTION).build())
+                shouldShow = true
 
-            return START_STICKY
+                return START_STICKY
+            }
         }
 
         val myPrefs = getSharedPreferences("ops", MODE_PRIVATE)
